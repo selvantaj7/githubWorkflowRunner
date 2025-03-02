@@ -58,8 +58,9 @@ jobs:
       # Push the new branch to GitHub
       - name: Push the new branch to GitHub
         run: |
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
           git push origin sync-branch-${{ env.source }}-${{ env.target }}
-
+          
       # Create a Pull Request using GitHub API
       - name: Create Pull Request using GitHub API
         env:
