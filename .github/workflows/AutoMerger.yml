@@ -1,0 +1,86 @@
+name: Auto Merge and Create PR
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'The source branch to merge from'
+        required: true
+        type: string
+      target:
+        description: 'The target branch to merge into'
+        required: true
+        type: string
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up git configuration
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+
+      # Get the source and target inputs from the workflow dispatch
+      - name: Get source and target branches
+        run: |
+          echo "source=${{ github.event.inputs.source }}" >> $GITHUB_ENV
+          echo "target=${{ github.event.inputs.target }}" >> $GITHUB_ENV
+
+      # Check if the source and target branches exist
+      - name: Check if source and target branches exist
+        run: |
+          git fetch origin ${{ env.source }} || (echo "Source branch does not exist" && exit 1)
+          git fetch origin ${{ env.target }} || (echo "Target branch does not exist" && exit 1)
+
+      # Sync changes from source to target
+      - name: Sync source to target
+        run: |
+          git checkout ${{ env.target }}
+          git merge origin/${{ env.source }} --no-ff --commit --no-edit || (echo "Merge conflict occurred" && exit 1)
+
+      # Create a new branch from source branch
+      - name: Create a new branch from source
+        run: |
+          git checkout -b sync-branch-${{ env.source }}-${{ env.target }} origin/${{ env.source }}
+
+      # Merge the target branch into the newly created branch
+      - name: Merge target into new branch
+        run: |
+          git merge origin/${{ env.target }} --no-ff --commit --no-edit || (echo "Merge conflict occurred" && exit 1)
+
+      # Push the new branch to GitHub
+      - name: Push the new branch to GitHub
+        run: |
+          git push origin sync-branch-${{ env.source }}-${{ env.target }}
+
+      # Create a Pull Request using GitHub API
+      - name: Create Pull Request using GitHub API
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_TITLE="Sync changes from ${{ env.source }} to ${{ env.target }}"
+          PR_BODY="This PR syncs the changes from the source branch **${{ env.source }}** to the target branch **${{ env.target }}**."
+          HEAD_BRANCH="sync-branch-${{ env.source }}-${{ env.target }}"
+          BASE_BRANCH="${{ env.target }}"
+          REPO_OWNER="${{ github.repository_owner }}"
+          REPO_NAME="${{ github.event.repository.name }}"
+
+          # Create the pull request using GitHub REST API
+          curl -X POST https://api.github.com/repos/$REPO_OWNER/$REPO_NAME/pulls \
+            -H "Authorization: Bearer $GITHUB_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -d @- <<EOF
+          {
+            "title": "$PR_TITLE",
+            "body": "$PR_BODY",
+            "head": "$HEAD_BRANCH",
+            "base": "$BASE_BRANCH"
+          }
+          EOF
