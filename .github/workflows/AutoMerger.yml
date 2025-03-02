@@ -50,7 +50,8 @@ jobs:
       # Create a new branch from source branch
       - name: Create a new branch from source
         run: |
-          BRANCH_NAME=sync-branch-${{ env.source }}-${{ env.target }}-$(date + '%d%m%Y%H%M')
+          echo "$(date + '%d%m%Y%H%M')"
+          BRANCH_NAME=sync-branch-${{ env.source }}-${{ env.target }}
           echo "Branch Name: $BRANCH_NAME"
           git checkout -b #BRANCH_NAME origin/${{ env.source }}
 
