@@ -51,7 +51,7 @@ jobs:
       - name: Create a new branch from source
         run: |
           BRANCH_NAME=sync-branch-${{ env.source }}-${{ env.target }}
-          git checkout -b #BRANCH_NAME origin/${{ env.source }}
+          git checkout -b $BRANCH_NAME origin/${{ env.source }}
 
       # Merge the target branch into the newly created branch
       - name: Merge target into new branch
